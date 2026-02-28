@@ -1,55 +1,63 @@
--- beta - stopa zaraze
--- gamma - stopa oporavka
--- R0 = beta/gamma (R0>1 - epidemija raste)
+import System.IO
+import Data.List
+import System.Directory (listDirectory, createDirectoryIfMissing)
+import System.FilePath ((</>), takeExtension, takeBaseName)
 
--- Korak SIR modela
-sirKorak :: Double -> Double -> Double 
-        -> (Double, Double, Double) 
-        -> (Double, Double, Double)
-sirKorak beta gamma n (s, i, r) = (s1, i1, r1)
-    where novozarazeni = beta * s * i / n
-          noviOporavljeni = gamma * i
-          
-          s1 = s - novozarazeni
-          i1 = i + novozarazeni - noviOporavljeni
-          r1 = r + noviOporavljeni
+-- pokretanje programa:
+-- :set -package directory
+-- :set -package filepath
+-- :l sir_model_simulation.hs
 
--- Simulacija SIR modela
-simulacija :: Int -> Double -> Double -> Double
-         -> (Double, Double, Double)    
-         -> [(Double, Double, Double)]  
-simulacija 0 _ _ _ _ = []               
-simulacija brDana beta gamma brCvorova stanje = 
-    novoStanje : simulacija (brDana - 1) beta gamma brCvorova novoStanje
-    where novoStanje = sirKorak beta gamma brCvorova stanje
+data Stanje = Stanje {
+    listaZdravih :: [Int],
+    listaZarazenih :: [Int],
+    listaOporavljenih :: [Int]
+} deriving Show
 
--- Pretvaranje rezultata u CSV
-toCSV :: [(Double, Double, Double)] -> String
-toCSV rezultati = zaglavlje ++ concat redovi
-    where zaglavlje = "Day,Susceptible,Infected,Recovered\n"
-          redovi = zipWith formatirajRed [1..] rezultati
+-- Ucitavanje grafa iz fajla
+ucitajGraf :: FilePath -> IO [(Int, [Int])]
+ucitajGraf putanja = do
+    sadrzaj <- readFile putanja
+    return (map parsirajLiniju (lines sadrzaj))
 
-formatirajRed :: Int -> (Double, Double, Double) -> String
-formatirajRed dan (s, i, r) = 
-    show dan ++ "," ++ show s ++ "," ++ show i ++ "," ++ show r ++ "\n"
+parsirajLiniju :: String -> (Int, [Int])
+parsirajLiniju linija = (brojCvora, listaSusjeda)
+    where (lijeviDio, desniDio) = break (== ':') linija
+          brojCvora = read lijeviDio
+          susjediTekst = drop 2 desniDio
+          listaSusjeda =
+            if susjediTekst == "" then []
+            else map read (words susjediTekst)
 
--- Testiranje
-runTest :: Double -> Double -> String -> IO ()
-runTest beta gamma fileName = do
-    writeFile fileName csvData
-    where brojCvorova = 1000
-          brojDana = 120
-          pocetnoStanje = (999, 1, 0)
-          rezultati = simulacija brojDana beta gamma brojCvorova pocetnoStanje
-          csvData = toCSV rezultati
+-- Obrada grafa
+obradiGraf :: FilePath -> FilePath -> IO ()
+obradiGraf putanjaGrafa izlazniFolder = do
+    graf <- ucitajGraf putanjaGrafa
+    let sviCvorovi = map fst graf
+    let pocetnoStanje = Stanje (delete 0 sviCvorovi) [0] []
+
+    let ispis = unlines (map show graf) ++ "\nStanje:\n" ++ show pocetnoStanje
+    let imeIzlaza = izlazniFolder </> takeBaseName putanjaGrafa ++ ".txt"
+    writeFile imeIzlaza ispis
+    putStrLn ("Rezultati sacuvani u " ++ imeIzlaza)
+
+-- Obrada fajlova
+obradiGrafove :: [FilePath] -> FilePath -> IO ()
+obradiGrafove [] _ = return ()
+obradiGrafove (g:gs) izlazniFolder = do
+    obradiGraf g izlazniFolder
+    obradiGrafove gs izlazniFolder
+
+-- Obrada foldera
+obradiFolder :: FilePath -> FilePath -> IO ()
+obradiFolder ulazniFolder izlazniFolder = do
+    createDirectoryIfMissing True izlazniFolder
+    fajlovi <- listDirectory ulazniFolder
+    let txtFajlovi = [ulazniFolder </> f | f <- fajlovi, takeExtension f == ".txt"]
+    obradiGrafove txtFajlovi izlazniFolder
 
 main :: IO ()
 main = do
-    runTest 0.05 0.1 (folder ++ "sir_case1.csv") -- broj zarazenih brzo opada 
-    runTest 0.25 0.1 (folder ++ "sir_case2.csv") -- sporije sirenje zaraze
-    runTest 0.5 0.1 (folder ++ "sir_case3.csv") -- brze sirenje zaraze
-    runTest 0.7 0.1 (folder ++ "sir_case4.csv")
-    runTest 0.7 0.2 (folder ++ "sir_case5.csv")
-    runTest 0.5 0.5 (folder ++ "sir_case6.csv") -- R0 = 1 - granicni slucaj - sporo sirenje
-    putStrLn "Testiranje zavrseno!"
-    where folder = "rezultati1/"
+    obradiFolder ulazniFolder izlazniFolder
+    where ulazniFolder = "grafovi"
+          izlazniFolder = "rez1"
