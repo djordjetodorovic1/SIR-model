@@ -1,12 +1,14 @@
 import System.IO
+import System.Random (randomRIO)
 import Data.List
 import System.Directory (listDirectory, createDirectoryIfMissing)
 import System.FilePath ((</>), takeExtension, takeBaseName)
 
--- pokretanje programa:
--- :set -package directory
--- :set -package filepath
--- :l sir_model_simulation.hs
+{- pokretanje programa:
+:set -package directory
+:set -package filepath
+:l sir_model_simulation.hs
+-}
 
 data Stanje = Stanje {
     listaZdravih :: [Int],
@@ -24,10 +26,36 @@ parsirajLiniju :: String -> (Int, [Int])
 parsirajLiniju linija = (brojCvora, listaSusjeda)
     where (lijeviDio, desniDio) = break (== ':') linija
           brojCvora = read lijeviDio
-          susjediTekst = drop 2 desniDio
+          susjediTekst = dropWhile (== ' ') (drop 1 desniDio)
           listaSusjeda =
             if susjediTekst == "" then []
             else map read (words susjediTekst)
+
+-- Novi zarazeni
+odrediNoveZarazene :: [(Int, [Int])] -> Double -> [Int] -> [Int] -> IO [Int]
+odrediNoveZarazene graf beta zdravi zarazeni = do
+    noviZarazeni <- mapM (pokusajZaraze beta) potencijalniZarazeni
+    return (concat noviZarazeni)
+    where susjediZarazenih = concat [susjedi | (cvor, susjedi) <- graf, cvor `elem` zarazeni]
+          potencijalniZarazeni = ukloniDuplikate [s | s <- susjediZarazenih, s `elem` zdravi]
+
+pokusajZaraze :: Double -> Int -> IO [Int]
+pokusajZaraze beta susjed = do
+    randomBr <- randomRIO (0.0, 1.0)
+    if randomBr < beta then return [susjed] else return []
+
+ukloniDuplikate :: Eq a => [a] -> [a]
+ukloniDuplikate = foldl (\xs x -> if x `elem` xs then xs else xs ++ [x]) []
+
+-- Novi oporavljeni
+odrediNoveOporavljene :: Double -> [Int] -> IO [Int]
+odrediNoveOporavljene _ [] = return []
+odrediNoveOporavljene gamma (cvor:ostatak) = do
+    randomBr <- randomRIO (0.0,1.0)
+    ostali <- odrediNoveOporavljene gamma ostatak
+    if randomBr < gamma
+        then return (cvor:ostali)
+        else return ostali
 
 -- Korak SIR modela
 sirKorak :: [(Int, [Int])] -> Double -> Double -> Stanje -> IO Stanje
@@ -36,24 +64,18 @@ sirKorak graf beta gamma trenutnoStanje = do
     let zarazeni = listaZarazenih trenutnoStanje
     let oporavljeni = listaOporavljenih trenutnoStanje
 
-    -- Testiranje funkcije
-    -- Zamjeniti sa oporavljenim i zarazenim za beta i gamma
-    let noviZarazeni = take 1 zdravi
-    let novaListaZdravih = drop 1 zdravi
-    let noviOporavljeni = take 1 zarazeni
-    let preostaliZarazeni = drop 1 zarazeni
-    let novaListaZarazenih = preostaliZarazeni ++ noviZarazeni
-    let novaListaOporavljeni = oporavljeni ++ noviOporavljeni
+    noviZarazeniSusjedi <- odrediNoveZarazene graf beta zdravi zarazeni
+    noviOporavljeniCvorovi <- odrediNoveOporavljene gamma zarazeni
 
-    return (Stanje novaListaZdravih novaListaZarazenih novaListaOporavljeni)
-
+    let noviZdravi = zdravi \\ noviZarazeniSusjedi
+    let noviZarazeni = [cvor | cvor <- zarazeni ++ noviZarazeniSusjedi, cvor `notElem` noviOporavljeniCvorovi]
+    let noviOporavljeni = oporavljeni ++ noviOporavljeniCvorovi
+    return (Stanje noviZdravi noviZarazeni noviOporavljeni)
 
 -- Simulacija SIR modela
 simuliraj :: [(Int, [Int])] -> Double -> Double -> Int -> Stanje -> [(Int, Int, Int)] -> IO [(Int, Int, Int)]
 simuliraj _ _ _ 0 _ rezultati = return (reverse rezultati)
 simuliraj graf beta gamma brojDana trenutnoStanje rezultati = do
-    -- putStrLn ("Dan " ++ show (length rezultati + 1) ++ ": zdravi=" ++ show s ++ ", Zarazeni =" ++ show i ++ ", Oporavljeni=" ++ show r)
-
     novoStanje <- sirKorak graf beta gamma trenutnoStanje
     simuliraj graf beta gamma (brojDana - 1) novoStanje ((s,i,r):rezultati)
     where s = length (listaZdravih trenutnoStanje)
@@ -66,7 +88,7 @@ formatirajRed dan (s,i,r) = show dan ++ "," ++ show s ++ "," ++ show i ++ "," ++
 
 toCSV :: [(Int, Int, Int)] -> String
 toCSV rezultati = unlines (zaglavlje : redovi)
-    where zaglavlje = "Dan,Zdravi,Zarazeni,Oporavljeni"
+    where zaglavlje = "Day,Susceptible,Infected,Recovered"
           redovi = zipWith formatirajRed [1..] rezultati
 
 -- Obrada grafa
