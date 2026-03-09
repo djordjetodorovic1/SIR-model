@@ -37,34 +37,58 @@ if __name__ == "__main__":
     folder = "grafovi"    
     if not os.path.exists(folder):
         os.makedirs(folder)
-
+    
     # Random graf
+    random_graf = kreiraj_random_graf(broj_cvorova=1000, gustina=0.01)
+    sacuvaj_graf_txt(random_graf, folder + "/random_gustina_1.txt")
+    
+    random_graf = kreiraj_random_graf(broj_cvorova=1000, gustina=0.02)
+    sacuvaj_graf_txt(random_graf, folder + "/random_gustina_2.txt")
+
     random_graf = kreiraj_random_graf(broj_cvorova=1000, gustina=0.2)
-    sacuvaj_graf_txt(random_graf, folder + "/random20.txt")
+    sacuvaj_graf_txt(random_graf, folder + "/random_gustina_20.txt")
 
     random_graf = kreiraj_random_graf(broj_cvorova=1000, gustina=0.4)
-    sacuvaj_graf_txt(random_graf, folder + "/random40.txt")
-
-    random_graf = kreiraj_random_graf(broj_cvorova=1000, gustina=0.6)
-    sacuvaj_graf_txt(random_graf, folder + "/random60.txt")
+    sacuvaj_graf_txt(random_graf, folder + "/random_gustina_40.txt")
 
     # Grid graf
-    grid_graf = kreiraj_grid_graf(rows=50, cols=50)
-    sacuvaj_graf_txt(grid_graf, folder + "/grid1.txt")
-
     grid_graf = kreiraj_grid_graf(rows=40, cols=60)
-    sacuvaj_graf_txt(grid_graf, folder + "/grid2.txt")
+    sacuvaj_graf_txt(grid_graf, folder + "/grid_40_60.txt")
+
+    grid_graf = kreiraj_grid_graf(rows=100, cols=100)
+    sacuvaj_graf_txt(grid_graf, folder + "/grid_100_100.txt")
 
     # Scale-free graf
     scale_free = kreiraj_scale_free_graf(broj_cvorova=1000, m=2)
-    sacuvaj_graf_txt(scale_free, folder + "/scale_free.txt")
+    sacuvaj_graf_txt(scale_free, folder + "/scale_free_2.txt")
+
+    scale_free = kreiraj_scale_free_graf(broj_cvorova=1000, m=5)
+    sacuvaj_graf_txt(scale_free, folder + "/scale_free_5.txt")
+
+    scale_free = kreiraj_scale_free_graf(broj_cvorova=1000, m=10)
+    sacuvaj_graf_txt(scale_free, folder + "/scale_free_10.txt")
 
     # Small-world graf
-    small_world = kreiraj_small_world_graf(broj_cvorova=1000, k=4, p=0.3)
-    sacuvaj_graf_txt(small_world, folder + "/small_world.txt")
+    small_world = kreiraj_small_world_graf(broj_cvorova=1000, k=4, p=0)
+    sacuvaj_graf_txt(small_world, folder + "/small_world_0.txt")
+
+    small_world = kreiraj_small_world_graf(broj_cvorova=1000, k=4, p=0.05)
+    sacuvaj_graf_txt(small_world, folder + "/small_world_05.txt")
+
+    small_world = kreiraj_small_world_graf(broj_cvorova=1000, k=4, p=0.1)
+    sacuvaj_graf_txt(small_world, folder + "/small_world_10.txt")
 
     # Modularni graf
-    modularni = kreiraj_modularni_graf(broj_modula=3, velicina_modula=10, p_intra=0.6, p_inter=0.05)
-    sacuvaj_graf_txt(modularni, folder + "/modularni.txt")
+    modularni = kreiraj_modularni_graf(broj_modula=10, velicina_modula=100, p_intra=0.1, p_inter=0.05)
+    sacuvaj_graf_txt(modularni, folder + "/modularni_1_05.txt")
+    
+    modularni = kreiraj_modularni_graf(broj_modula=10, velicina_modula=100, p_intra=0.1, p_inter=0.005)
+    sacuvaj_graf_txt(modularni, folder + "/modularni_1_005.txt")
 
+    modularni = kreiraj_modularni_graf(broj_modula=10, velicina_modula=100, p_intra=0.1, p_inter=0.001)
+    sacuvaj_graf_txt(modularni, folder + "/modularni_1_001.txt")
+
+    modularni = kreiraj_modularni_graf(broj_modula=10, velicina_modula=100, p_intra=0.1, p_inter=0.0001)
+    sacuvaj_graf_txt(modularni, folder + "/modularni_1_0001.txt")
+    
     print("Svi grafovi su sacuvani u folderu " + folder)
